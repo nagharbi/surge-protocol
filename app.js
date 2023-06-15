@@ -1,29 +1,60 @@
 const { request, gql } = require("graphql-request");
 const url =
-  "https://api.thegraph.com/subgraphs/name/somemoecoding/surgeswap-v1-cg-bsc";
+  "https://api.thegraph.com/subgraphs/name/somemoecoding/surgeswap-v1-eth";
 
-async function getHistoricalMarketIndicators(token) {
+async function getHistoricalMarketIndicators(variables) {
   const query = gql`
-    query{
-        ticker(id: "${token}") {
-        target_volume
-        target_currency
-        pool_id
-        liquidity_in_usd
-        last_price
-        base_volume
-        base_currency
+    query TokenDayDatas(
+      $tokenAddress: Bytes!
+      $startDate: Int!
+      $endDate: Int!
+    ) {
+      tokenDayDatas(
+        where: { token: $tokenAddress, date_gte: $startDate, date_lt: $endDate }
+      ) {
         id
-        }
+        date
+        dailyVolumeUSD
+        dailyTxns
+        totalLiquidityUSD
+        priceUSD
+      }
     }
-    `;
-  const response = await request(url, query);
-  console.log(response.ticker);
-  return response.ticker;
+  `;
+
+  try {
+    const response = await request(url, query, variables);
+    if (response.tokenDayDatas.length > 0) {
+      console.log(response.tokenDayDatas);
+      return response.tokenDayDatas;
+    }
+    console.log("There are no data");
+  } catch (error) {
+    console.error("Error retrieving data:", error);
+    throw error;
+  }
 }
 
-getHistoricalMarketIndicators("0x9f19c8e321bD14345b797d43E01f0eED030F5Bff");
+
+let startDate = 1681516800;
+let endDate = 1681520400;
+const hourInSecond = 3600;
+
+let variables = {
+  tokenAddress: "0x2225c9764fe39001c7cb1cbde25a3443d5caed7b",
+  startDate,
+  endDate,
+};
+
+getHistoricalMarketIndicators(variables);
 
 setInterval(() => {
-  getHistoricalMarketIndicators("0x9f19c8e321bD14345b797d43E01f0eED030F5Bff");
-}, 3600 * 1000);
+  startDate += hourInSecond;
+  endDate += hourInSecond;
+  variables = {
+    tokenAddress: "0x2225c9764fe39001c7cb1cbde25a3443d5caed7b",
+    startDate,
+    endDate
+  }
+  getHistoricalMarketIndicators(variables);
+}, 1000);
